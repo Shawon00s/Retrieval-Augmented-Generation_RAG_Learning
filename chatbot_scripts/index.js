@@ -1,9 +1,16 @@
 import fm from 'front-matter';
 import OpenAI from "openai";
 import dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js'
+import slugs from './slugs.js'; // Import slugs from the slugs.js file
+
+
 
 // Configure dotenv to load environment variables
 dotenv.config();
+
+// Create a single supabase client for interacting with your database
+const supabase = createClient('https://ucklnepegzxtoyboujhu.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVja2xuZXBlZ3p4dG95Ym91amh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4MTk3MDMsImV4cCI6MjA2ODM5NTcwM30.T_NRIqwKeKMMKOWrAaKF6mU8D_qa5hCK24zurQe6HHU');
 
 // OpenRouter for chat completions
 const openrouter = new OpenAI({
@@ -97,7 +104,28 @@ const handleDoc = async (slug) => {
     });
     console.log("Chat response:", completion.choices[0].message.content);*/
 
-    return { embedding/*, completion */};
+    //Save to Supabase
+    console.log("Saving to Supabase...");
+    const { error } = await supabase
+        .from('docs')
+        .insert([{
+            id: slug,
+            title: data.attributes.title,
+            url: `https://docs.expo.dev/${slug}`,
+            vector: embedding.data[0].embedding  // Use the embedding vector we created
+        }]);
+
+    if (error) {
+        console.log("❌ Error saving to Supabase:", error.message);
+    } else {
+        console.log("✅ Successfully saved to Supabase!");
+    }
+
+    return { embedding/*, completion */ };
 }
 
-handleDoc('get-started/start-developing/')
+const handleAllDocs = async () => {
+    await Promise.all(slugs.map(slug => handleDoc(slug)));
+}
+
+handleAllDocs();
